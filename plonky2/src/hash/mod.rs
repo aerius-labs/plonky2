@@ -1,4 +1,4 @@
-mod arch;
+pub mod arch;
 pub mod hash_types;
 pub mod hashing;
 pub mod keccak;
