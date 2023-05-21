@@ -13,12 +13,13 @@ use plonky2::gates::util::StridedConstraintConsumer;
 use plonky2::hash::hash_types::RichField;
 use plonky2::hash::hashing::HashConfig;
 use plonky2::iop::ext_target::ExtensionTarget;
-use plonky2::iop::generator::{GeneratedValues, SimpleGenerator, WitnessGenerator};
+use plonky2::iop::generator::{GeneratedValues, SimpleGenerator, WitnessGeneratorRef};
 use plonky2::iop::target::Target;
 use plonky2::iop::wire::Wire;
 use plonky2::iop::witness::{PartitionWitness, Witness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
 use plonky2::plonk::vars::{EvaluationTargets, EvaluationVars, EvaluationVarsBase};
+use plonky2::util::serialization::{Buffer, IoResult, Read, Write};
 
 use crate::poseidon2_hash as poseidon2;
 use crate::poseidon2_hash::{Poseidon2, Poseidon2HashConfig};
@@ -101,6 +102,15 @@ impl<F: RichField + Extendable<D> + Poseidon2, const D: usize> Gate<F, D> for Po
     fn id(&self) -> String {
         format!("{self:?}<WIDTH={}>", Poseidon2HashConfig::WIDTH)
     }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> {
+        Ok(())
+    }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self> where Self: Sized {
+        Ok(Self { 0: Default::default() })
+    }
+
 
     fn eval_unfiltered(&self, vars: EvaluationVars<F, D>) -> Vec<F::Extension> {
         let mut constraints = Vec::with_capacity(self.num_constraints());
@@ -353,12 +363,12 @@ impl<F: RichField + Extendable<D> + Poseidon2, const D: usize> Gate<F, D> for Po
         constraints
     }
 
-    fn generators(&self, row: usize, _local_constants: &[F]) -> Vec<Box<dyn WitnessGenerator<F>>> {
+    fn generators(&self, row: usize, _local_constants: &[F]) -> Vec<WitnessGeneratorRef<F>> {
         let gen = Poseidon2Generator::<F, D> {
             row,
             _phantom: PhantomData,
         };
-        vec![Box::new(gen.adapter())]
+        vec![WitnessGeneratorRef::new(gen.adapter())]
     }
 
     fn num_wires(&self) -> usize {
@@ -391,6 +401,10 @@ struct Poseidon2Generator<F: RichField + Extendable<D> + Poseidon2, const D: usi
 impl<F: RichField + Extendable<D> + Poseidon2, const D: usize> SimpleGenerator<F>
     for Poseidon2Generator<F, D>
 {
+    fn id(&self) -> String {
+        "Poseidon2Generator".to_string()
+    }
+
     fn dependencies(&self) -> Vec<Target> {
         (0..Poseidon2HashConfig::WIDTH)
             .map(|i| Poseidon2Gate::<F, D>::wire_input(i))
@@ -473,6 +487,13 @@ impl<F: RichField + Extendable<D> + Poseidon2, const D: usize> SimpleGenerator<F
         for i in 0..Poseidon2HashConfig::WIDTH {
             out_buffer.set_wire(local_wire(Poseidon2Gate::<F, D>::wire_output(i)), state[i]);
         }
+    }
+
+    fn serialize(&self, dst: &mut Vec<u8>) -> IoResult<()> { dst.write_usize(self.row) }
+
+    fn deserialize(src: &mut Buffer) -> IoResult<Self> where Self: Sized {
+        let row = src.read_usize()?;
+        Ok(Self { row, _phantom: Default::default() })
     }
 }
 
