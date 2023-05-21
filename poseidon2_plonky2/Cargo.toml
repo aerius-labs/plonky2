@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.69"
-plonky2 = "0.1.3"
+plonky2 = { path = "../plonky2" }
 rstest = "0.17.0"
 serial_test = "1.0.0"
 unroll = "0.1.5"
