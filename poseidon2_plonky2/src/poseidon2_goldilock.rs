@@ -21,7 +21,7 @@ impl Poseidon2 for GoldilocksField {
     #[inline(always)]
     fn sbox_layer(state: &mut [Self; 12]) {
          unsafe {
-             crate::hash::arch::aarch64::poseidon_goldilocks_neon::sbox_layer(state);
+             plonky2::hash::arch::aarch64::poseidon_goldilocks_neon::sbox_layer(state);
          }
     }
 }
